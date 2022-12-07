@@ -1,0 +1,278 @@
+---
+title: "Data606_Project"
+author: "Mahmud Hasan Al Raji"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+For this project, i used Twitch streamers observational data collected from kaggle.com (https://www.kaggle.com/datasets/aayushmishra1512/twitchdata). The data is then stored on my GitHub in order to make the data reproducible.In the data set, each case represents a Twitch streamer and there are 1000 observations. It is noted that, Twitch is an American video live streaming service that focuses on video game live streaming and e-sports competitions broadcasting. Additionally, it offers music broadcasts, creative content, and "in real life" streams. 
+
+With the data set, i will analyze the research questions: Does streaming time predict followers gain on Twitch platform? Does mature content have significant effect on follower gain? Moreover, I will analyze the data further to see if there is any difference between the average followers gain for those who stream mature content and who don't.
+
+# Load libraries
+```{r message=FALSE}
+library(dplyr)
+library(ggplot2)
+library(infer)
+```
+
+# Getting the data
+```{r message=FALSE}
+data<-read.csv("https://raw.githubusercontent.com/Raji030/data606_project/main/twitchdata-update.csv",sep=",", header=TRUE)
+glimpse(data)
+head(data)
+```
+
+# Data preparation
+```{r message=FALSE}
+#Renaming variables
+data<-data %>% rename(stream_time=Stream.time.minutes.,followers_gained=Followers.gained,mature_content=Mature)
+data1<-data %>% mutate(stream_time_hr=stream_time/60,followers_gained_mill=followers_gained/1000000) %>% select(stream_time_hr,followers_gained_mill,mature_content)
+glimpse(data1)
+head(data1)
+#Sub-setting data based on mature content streaming
+mature_yes <- data1 %>% filter(mature_content == "True")
+glimpse(mature_yes)
+head(mature_yes)
+```
+# Summary statistics of the variables:
+```{r }
+summary(data1$stream_time_hr)
+```
+```{r }
+summary(data1$followers_gained_mill)
+```
+```{r }
+summary(data1$mature_content)
+```
+
+# Histogram of streaming time data
+```{r}
+hist(data1$stream_time_hr)
+```
+
+# Part-A: Inference and analysis
+In this part I will analyze the data to see if streaming time is the predictor of the followers gain on Twitch platform. Here, stream_time_hr is the predictor (independent variable) and followers_gained_mill is the dependent variable. Both of them are quantitaive. Here, i will conduct linear regression analysis.
+
+# Scatter Plot of the relationship between the streming time and followers gain
+```{r}
+ggplot(data1, aes(x =stream_time_hr, y =followers_gained_mill)) + geom_point(stat = "identity")
+```
+Slight linear trend exists.
+
+# Find correlation coefficient
+```{r }
+data1 %>% 
+summarise(cor(stream_time_hr,followers_gained_mill))
+```
+A negative correlation describes that the two variables move in opposite directions.Here, the coefficient value indicates a very weak association between two variables.
+
+# Linear regression
+```{r message=FALSE}
+
+m1<-lm(followers_gained_mill~stream_time_hr,data =data1)
+summary(m1)
+```
+Based on summary above, the linear regression model: y= -3.778e-05 x (stream_time_hr) + 2.814e-01. The nagtive slope indicates the variables move direction is opposite to each other.
+
+# Set up and examine hypothesis test conditions:
+Null Hypothesis: There is no relationship between stream time and followers gained
+Alternate Hypothesis: There is a relationship between stream time and followers gained
+
+Based on summary the above, it is seen that there is a slight trend but a weak correlation.The P_value is less than the usual significance level 0.05 indicating that the null hypothesis will be rejected here. But this does not mean that the alternative hypothesis is true here. 
+
+# Plotting the relationship between stream time and followers gained with the least squares line for m1 laid on top.
+```{r }
+
+ggplot(data1, aes(x =stream_time_hr, y =followers_gained_mill)) +geom_point(stat="identity")+stat_smooth(method = "lm", se = FALSE)
+```
+# Model diagnostic 
+To assess whether the linear model is reliable, I will check for linearity, nearly normal residual and constant variability of the residuals. 
+
+# Linearity check by the residuals vs. fitted (predicted) plot:
+```{r }
+ggplot(data =m1, aes(x = .fitted, y = .resid)) +
+geom_point() +
+geom_hline(yintercept = 0, linetype = "dashed") +
+xlab("Fitted values") +
+ylab("Residuals")
+```
+From the plot above, it is seen that the residuals are not distributed around 0 with a consistent pattern,
+which indicating a non linear trend. So, I can not assume a linear regression model for fitting the data set here.
+
+# Nearly normal residuals check by plotting histogram:
+```{r }
+ggplot(data =m1, aes(x = .resid))+
+geom_histogram(binwidth =0.05) +
+xlab("Residuals")
+
+```
+From the residuals plot above, it is seen that the residuals is not nearly normally distributed.
+
+# Normal probability plot of the residuals:
+```{r }
+ggplot(data =m1, aes(sample = .resid)) +
+stat_qq()
+```
+The normal probability plot or the q-q plot is not linear. Also, the residuals distribution plot does not reflect a constant variability. Hence, from the model diagnostic above it is seen that the linear model is not fitted the data set. Therefore, it can be said that the srteam time is not the predictor of the followers gained on Twitch platform.
+
+# Part-B: Inference and analysis.
+In this part, I will analyze the data to see if streaming time on mature content has any effect on followers gain on Twitch platform. Here, stream_time_hr is the predictor (independent variable) and followers_gained_mill is the dependent variable. Both of them are quantitaive.
+
+# Scatter Plot of the relationship between the mature content stream time and followers gain
+```{r}
+ggplot(mature_yes, aes(x =stream_time_hr, y =followers_gained_mill)) + geom_point(stat = "identity")
+```
+# Finding correlation coefficient
+```{r}
+mature_yes %>% 
+summarise(cor(stream_time_hr,followers_gained_mill))
+
+```
+A negative correlation describes that the two variables move in opposite direction.Here, the coefficient value indicates a very weak correlation between the two variables.
+
+# Linear regression
+```{r message=FALSE}
+m2<-lm(followers_gained_mill~stream_time_hr,data =mature_yes)
+summary(m2)
+```
+Based on summary above, the linear regression model: y= -2.609e-05 x (stream_time_hr) + 2.032e-01. The nagtive slope indicates the variables move direction is opposite to each other.
+
+# Set up and examine hypothesis test conditions:
+Null Hypothesis: There is no relationship between muture content stream time and followers gained
+Alternate Hypothesis: There is a relationship between muture content stream time and followers gained
+
+It is seen that there exist a slight trend with a weak correlation.The P_value is less than the usual significance level 0.05 indicating that the null hypothesis will be rejected here. Again, this does not mean that the alternative hypothesis is true. 
+
+# Plotting the relationship between mature content stream time and followers gained with the least squares line for m2 laid on top.
+```{r }
+
+ggplot(mature_yes, aes(x =stream_time_hr, y =followers_gained_mill)) +geom_point(stat="identity")+stat_smooth(method = "lm", se = FALSE)
+```
+
+# Model diagnostic 
+Here, linearity, nearly normal residual and constant variability of the residuals will be checked to see whether the linear model is reliable. 
+
+# Linearity check by the residuals vs. fitted (predicted) plot:
+```{r }
+ggplot(data =m2, aes(x = .fitted, y = .resid)) +
+geom_point() +
+geom_hline(yintercept = 0, linetype = "dashed") +
+xlab("Fitted values") +
+ylab("Residuals")
+```
+From the plot above, it is seen that the residuals are not distributed around 0 with a consistent pattern,
+which reflecting that the line is not linear. Hence, linear regression model will not be fitting the data set here.
+
+# Nearly normal residuals check by plotting histogram:
+```{r}
+ggplot(data =m2, aes(x = .resid))+
+geom_histogram(binwidth =0.05) +
+xlab("Residuals")
+
+```
+It is seen that the residuals is not nearly normal. 
+
+# Normal probability plot of the residuals:
+```{r }
+ggplot(data =m2, aes(sample = .resid)) +
+stat_qq()
+```
+The q-q plot is not linear and the residuals distribution plot does not reflect a constant variability. Hence, the model diagnostic says that the linear model is not fitted the data set. Therefore, it can be said that the mature content srteam time has no effect on the followers gain.
+
+# Part-C: Analysing if there is any difference between average followers gain for those who stream muture content and who don't.
+
+For this analysis I consider streamers into two groups. One group represents streamers who stream muture content that True group and other group who don't stream mature content that False group.Here, I will conduct conduct hypotheiss test with null distribution and with 95% confidence interval to understand the case.
+
+# Counting mature content and non-mature content streamers and their proportion
+```{r }
+
+data1 %>%
+  count(mature_content) %>% 
+  mutate(p = n /sum(n))
+
+```
+
+# Distribution of two groups:
+```{r }
+
+ggplot(data1, aes(x = mature_content)) +
+  geom_bar() +
+  labs(
+    x = "", y = "",
+    title = "mature content distribution"
+  ) +
+  coord_flip() 
+
+```
+# Finding average followrs gain for two groups:
+```{r}
+data1 %>%
+  group_by(mature_content) %>%
+  summarise(mean_followers_gain = mean(followers_gained_mill))
+```
+There is an observed difference. To understand whether this difference is statistically significant, I will conduct a hypothesis test here.
+
+# Inference conditions check:
+For inference, when comparing the means of two groups three conditions need to be satisfied and they are: independence within groups, independence between groups and the size of the each group is sufficiently large i.e. at least 30 for holding the central limit theory and the mean distribution of each group to be approximately normal. Here, streamers are randomly chosen for each group so they are independent within group. Also, each group is formed by streamers who are categorized by their difference in mature content streaming or not streaming thus reflecting independent case between groups. Now, for determining the size of the each group the following code can be used:
+
+```{r}
+size<-data1 %>% count(mature_content)
+size
+```
+
+From above, it is clearly seen that each group size is more than 30. Hence, it can be said that all the conditions necessary inference are satisfied.
+
+# Write the hypotheses for testing if the average followers gain are different for those who stream mature content and those who don’t.
+
+Condition for the null (H0) and alternative hypotheses (HA) are:
+H0= There is no difference between average followers gain for those who stream mature content and those who dont
+HA= There is a difference between average followers gain for those who stream mature content and those who dont
+
+# Initialize the hypthesis test and save it as obs_diff:
+```{r}
+obs_diff <- data1 %>%
+  specify(followers_gained_mill ~ mature_content) %>%
+  calculate(stat = "diff in means", order = c("True", "False"))
+obs_diff
+```
+
+Here, the statistic I am searching for is the difference in means, with the order being yes - no != 0.
+
+#Simulating the test on the null distribution and save itas null:
+```{r }
+null_dist <- data1 %>%
+  specify(followers_gained_mill ~ mature_content) %>%
+  hypothesize(null = "independence") %>%
+  generate(reps = 1000, type = "permute") %>%
+  calculate(stat = "diff in means", order = c("True", "False"))
+```
+
+# Visualize the null ditribution
+```{r }
+ggplot(data = null_dist, aes(x = stat)) +
+  geom_histogram()
+```
+
+# Calculating the p-value for the hypothesis test using the get_p_value function:
+```{r }
+
+null_dist %>%
+  get_p_value(obs_stat = obs_diff, direction = "two_sided")
+```
+
+Here, the p value is 0. That means the strength of evidence in support of null hypothesis is very low than the common significance level. So, we can reject the null hypothesis indicating that there exists a difference in average followers gain in stated group.
+
+# Conducting the hypotheses test using the confidence intervals with actual data considering α = 0.05:
+```{r }
+data1 %>% specify(followers_gained_mill ~ mature_content) %>% generate(reps = 1000, type = "bootstrap") %>% calculate(stat = "diff in means", order = c('True', 'False')) %>% get_ci(level = 0.95)
+```
+The confidence interval above contains the observed for average followers gain difference.It is also seen that at 95% confidence interval, the range does not span 0. That means the null hypothesis is not true. So, the null hypothesis can be rejected. Hence, it can be said that a significant difference exists in average followers gain for those who stream mature content and who don't. 
+
+# Conclusion
+After conducting the statistical analyses, I found that the streaming time is not the predictor of the followers gain on Twitch platform. Also, mature content streaming does not have effect on followers gain. Moreover, analyzing further, I found that there exist a difference between the average followers gain for those who stream mature content and those who don't. Also, the average followers gain is more for those who don't stream mature content than those who stream mature content on Twitch platform.
